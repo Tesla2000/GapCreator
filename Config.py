@@ -1,4 +1,6 @@
 class Config:
-    maks_sentence_length = 25
-    versions_calculated_at_once = 2
-    threshold = .8
+    possible_options = 1
+    maks_sentence_length = 127
+    confidence_threshold = .95
+    max_gap_length = 3
+    mask = "[MASK]"
