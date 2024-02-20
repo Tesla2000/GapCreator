@@ -14,7 +14,7 @@ def main():
     for raw_sentence in sentences:
         raw_sentence = re.sub(r'\s+', ' ', raw_sentence)
         sentence = raw_sentence.lower().replace(',', ' ').strip('.?!')
-        if len(sentence.split()) > Config.maks_sentence_length:
+        if len(sentence.split()) > Config.max_sentence_length:
             print(sentence)
             continue
         options = get_longest_masks(sentence)

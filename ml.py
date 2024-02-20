@@ -33,7 +33,7 @@ def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
         pos_masks = tuple(masked_sentences.keys())
         masked_sentences = list(masked_sentences.values())
         if pos_masks:
-            if len(pos_masks[0]) > Config.maks_sentence_length:
+            if len(pos_masks[0]) > Config.max_gap_length:
                 return previous_match
         original_sentences = tuple(masked_sentences)
         token_probabilities = []
@@ -42,7 +42,7 @@ def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
             sentence = masked_sentences[sentence_index]
             encoded_inputs = enc(
                 sentence,
-                return_tensors='pt', padding='max_length', max_length=Config.maks_sentence_length + 1)
+                return_tensors='pt', padding='max_length', max_length=Config.max_sentence_length + 1)
             output = mlm_model_ts(**encoded_inputs)[0][0][position]
             next_token_probability = torch.sum(torch.sort(F.softmax(output, dim=0))[0][-Config.possible_options:])
             token_probabilities.append(next_token_probability)
