@@ -5,7 +5,7 @@ import torch
 from transformers import BertTokenizer, BertForMaskedLM
 
 from Config import Config
-from mask_sentence import mask_sentence
+from string_functions.mask_sentence import mask_sentence
 
 enc = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -27,7 +27,7 @@ def get_longest_masks(sentence: str) -> tuple[str, ...]:
     previous_match = None
     for mask_length in count(1):
         sentence = sentence.strip(stripped_signs).lower()
-        masked_sentences = mask_sentence(sentence, mask_length, previous_match)
+        masked_sentences = mask_sentence(sentence, previous_match)
         pos_masks = tuple(masked_sentences.keys())
 
         origin_masked_sentences = tuple(masked_sentences.values())

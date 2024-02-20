@@ -1,12 +1,10 @@
-import os
 import random
-import sys
 from pathlib import Path
 
 from Config import Config
 from ml import get_longest_masks
-from conv_masked_sentence_to_gap import conv_masked_sentence_to_gap
-from div_to_sentences import div_to_sentences
+from string_functions.conv_masked_sentence_to_gap import conv_masked_sentence_to_gap
+from string_functions.div_to_sentences import div_to_sentences
 
 
 def main():
@@ -25,5 +23,4 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.path.insert(0, str(Path(os.getcwd()).parent))
     main()
