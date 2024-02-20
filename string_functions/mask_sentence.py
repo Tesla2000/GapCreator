@@ -11,6 +11,8 @@ def mask_sentence(sentence: str, base_sentences: list[str] = None):
     divided_sentences = {}
     for mask in masks:
         divided_sentence = sentence.split()
+        if len(divided_sentence) == mask[-1]:
+            continue
         for index in mask:
             divided_sentence[index] = Config.mask
         divided_sentences[tuple(_ + 1 for _ in mask)] = ' '.join(divided_sentence)

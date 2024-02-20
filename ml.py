@@ -27,29 +27,22 @@ stripped_signs = '.?!,'
 @torch.no_grad
 def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
     previous_match = None
-    for mask_length in count(1):
+    while True:
         base_sentence = base_sentence.strip(stripped_signs).lower()
         masked_sentences = mask_sentence(base_sentence, previous_match)
         pos_masks = tuple(masked_sentences.keys())
-
         masked_sentences = list(masked_sentences.values())
         original_sentences = tuple(masked_sentences)
-        token_probabilities = len(masked_sentences) * [0]
+        token_probabilities = []
         for sentence_index in range(len(masked_sentences)):
-            for position_index in range(mask_length):
-                position = pos_masks[sentence_index][position_index]
-                sentence = masked_sentences[sentence_index]
-                encoded_inputs = enc(
-                    sentence,
-                    return_tensors='pt', padding='max_length', max_length=128)
-                output = mlm_model_ts(**encoded_inputs)[0][0][position]
-                next_token_probability = torch.sum(
-                    torch.sort(F.softmax(output))[0][-Config.possible_options:])
-                if next_token_probability < Config.confidence_threshold:
-                    break
-                next_token = enc.decode([torch.argmax(output)])
-                masked_sentences[sentence_index] = sentence.replace(Config.mask, next_token)
-            token_probabilities[sentence_index] = next_token_probability
+            position = pos_masks[sentence_index][-1]
+            sentence = masked_sentences[sentence_index]
+            encoded_inputs = enc(
+                sentence,
+                return_tensors='pt', padding='max_length', max_length=Config.maks_sentence_length + 1)
+            output = mlm_model_ts(**encoded_inputs)[0][0][position]
+            next_token_probability = torch.sum(torch.sort(F.softmax(output, dim=0))[0][-Config.possible_options:])
+            token_probabilities.append(next_token_probability)
         matching_sentences = tuple(sentence for sentence, probability in zip(original_sentences, token_probabilities) if
                                    probability > Config.confidence_threshold)
         if not matching_sentences:
