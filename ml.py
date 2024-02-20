@@ -2,6 +2,7 @@ import re
 from itertools import count
 
 import torch
+from tqdm import tqdm
 from transformers import BertTokenizer, BertForMaskedLM
 
 from .mask_sentence import mask_sentence
@@ -24,7 +25,7 @@ stripped_signs = '.?!,'
 
 def get_longest_masks(sentence: str) -> tuple[str, ...]:
     previous_match = None
-    for mask_length in count(1):
+    for mask_length in tqdm(count(1), "Checking masking length of..."):
         sentence = sentence.strip(stripped_signs).lower()
         masked_sentences = mask_sentence(sentence, mask_length)
         pos_masks = tuple(masked_sentences.keys())
