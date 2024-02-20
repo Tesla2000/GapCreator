@@ -4,7 +4,7 @@ from itertools import count
 import torch
 from transformers import BertTokenizer, BertForMaskedLM
 
-from mask_sentence import mask_sentence
+from .mask_sentence import mask_sentence
 
 enc = BertTokenizer.from_pretrained('bert-base-uncased')
 

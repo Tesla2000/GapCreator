@@ -1,7 +1,7 @@
-from Config import Config
-from ml import get_longest_masks
-from conv_masked_sentence_to_gap import conv_masked_sentence_to_gap
-from div_to_sentences import div_to_sentences
+from .Config import Config
+from .ml import get_longest_masks
+from .conv_masked_sentence_to_gap import conv_masked_sentence_to_gap
+from .div_to_sentences import div_to_sentences
 
 
 def main():
