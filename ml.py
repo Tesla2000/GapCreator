@@ -1,7 +1,7 @@
-import re
 from itertools import count
 
 import torch
+import torch.nn.functional as F
 from transformers import BertTokenizer, BertForMaskedLM
 
 from Config import Config
@@ -20,37 +20,38 @@ segments_tensor = torch.tensor(batched_segment_ids)
 attention_masks_tensor = torch.tensor(batched_attention_masks)
 mlm_model_ts = BertForMaskedLM.from_pretrained('bert-base-uncased', torchscript=True)
 traced_mlm_model = torch.jit.trace(mlm_model_ts, [tokens_tensor, segments_tensor, attention_masks_tensor])
+mlm_model_ts.eval()
 stripped_signs = '.?!,'
 
 
-def get_longest_masks(sentence: str) -> tuple[str, ...]:
+@torch.no_grad
+def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
     previous_match = None
     for mask_length in count(1):
-        sentence = sentence.strip(stripped_signs).lower()
-        masked_sentences = mask_sentence(sentence, previous_match)
+        base_sentence = base_sentence.strip(stripped_signs).lower()
+        masked_sentences = mask_sentence(base_sentence, previous_match)
         pos_masks = tuple(masked_sentences.keys())
 
-        origin_masked_sentences = tuple(masked_sentences.values())
-        masked_sentences = tuple(origin_masked_sentences)
-
-        for position_index in range(mask_length):
-            unmasked_tokens = []
-            for sentence_start in range(0, len(masked_sentences), Config.versions_calculated_at_once):
+        masked_sentences = list(masked_sentences.values())
+        original_sentences = tuple(masked_sentences)
+        token_probabilities = len(masked_sentences) * [0]
+        for sentence_index in range(len(masked_sentences)):
+            for position_index in range(mask_length):
+                position = pos_masks[sentence_index][position_index]
+                sentence = masked_sentences[sentence_index]
                 encoded_inputs = enc(
-                    masked_sentences[sentence_start:sentence_start + Config.versions_calculated_at_once],
+                    sentence,
                     return_tensors='pt', padding='max_length', max_length=128)
-                outputs = mlm_model_ts(**encoded_inputs)
-                most_likely_token_ids = [
-                    torch.argmax(
-                        outputs[0][i, positions[position_index]]) for i, positions in enumerate(
-                        pos_masks[sentence_start:sentence_start + Config.versions_calculated_at_once])
-                ]
-                unmasked_tokens += list(enc.decode([token]) for token in most_likely_token_ids)
-            masked_sentences = tuple(masked_sentences[sentence_index].replace('[MASK]', token.strip(stripped_signs), 1)
-                                     for sentence_index, token in enumerate(unmasked_tokens))
-        matching_sentences = tuple(origin_masked_sentence for masked_sentence, origin_masked_sentence in
-                                   zip(masked_sentences, origin_masked_sentences) if
-                                   re.sub(r'\s+', ' ', masked_sentence) == re.sub(r'\s+', ' ', sentence))
+                output = mlm_model_ts(**encoded_inputs)[0][0][position]
+                next_token_probability = torch.sum(
+                    torch.sort(F.softmax(output))[0][-Config.possible_options:])
+                if next_token_probability < Config.confidence_threshold:
+                    break
+                next_token = enc.decode([torch.argmax(output)])
+                masked_sentences[sentence_index] = sentence.replace(Config.mask, next_token)
+            token_probabilities[sentence_index] = next_token_probability
+        matching_sentences = tuple(sentence for sentence, probability in zip(original_sentences, token_probabilities) if
+                                   probability > Config.confidence_threshold)
         if not matching_sentences:
             return previous_match
         previous_match = matching_sentences
