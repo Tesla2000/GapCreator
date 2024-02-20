@@ -2,10 +2,10 @@ import re
 from itertools import count
 
 import torch
-from tqdm import tqdm
 from transformers import BertTokenizer, BertForMaskedLM
 
-from .mask_sentence import mask_sentence
+from Config import Config
+from mask_sentence import mask_sentence
 
 enc = BertTokenizer.from_pretrained('bert-base-uncased')
 
@@ -25,7 +25,7 @@ stripped_signs = '.?!,'
 
 def get_longest_masks(sentence: str) -> tuple[str, ...]:
     previous_match = None
-    for mask_length in tqdm(count(1), "Checking masking length of..."):
+    for mask_length in count(1):
         sentence = sentence.strip(stripped_signs).lower()
         masked_sentences = mask_sentence(sentence, mask_length)
         pos_masks = tuple(masked_sentences.keys())
@@ -34,11 +34,18 @@ def get_longest_masks(sentence: str) -> tuple[str, ...]:
         masked_sentences = tuple(origin_masked_sentences)
 
         for position_index in range(mask_length):
-            encoded_inputs = enc(masked_sentences, return_tensors='pt', padding='max_length', max_length=128)
-            outputs = mlm_model_ts(**encoded_inputs)
-            most_likely_token_ids = [torch.argmax(outputs[0][i, positions[position_index]]) for i, positions in
-                                     enumerate(pos_masks)]
-            unmasked_tokens = tuple(enc.decode([token]) for token in most_likely_token_ids)
+            unmasked_tokens = []
+            for sentence_start in range(0, len(masked_sentences), Config.versions_calculated_at_once):
+                encoded_inputs = enc(
+                    masked_sentences[sentence_start:sentence_start + Config.versions_calculated_at_once],
+                    return_tensors='pt', padding='max_length', max_length=128)
+                outputs = mlm_model_ts(**encoded_inputs)
+                most_likely_token_ids = [
+                    torch.argmax(
+                        outputs[0][i, positions[position_index]]) for i, positions in enumerate(
+                        pos_masks[sentence_start:sentence_start + Config.versions_calculated_at_once])
+                ]
+                unmasked_tokens += list(enc.decode([token]) for token in most_likely_token_ids)
             masked_sentences = tuple(masked_sentences[sentence_index].replace('[MASK]', token.strip(stripped_signs), 1)
                                      for sentence_index, token in enumerate(unmasked_tokens))
         matching_sentences = tuple(origin_masked_sentence for masked_sentence, origin_masked_sentence in
