@@ -32,6 +32,9 @@ def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
         masked_sentences = mask_sentence(base_sentence, previous_match)
         pos_masks = tuple(masked_sentences.keys())
         masked_sentences = list(masked_sentences.values())
+        if pos_masks:
+            if len(pos_masks[0]) > Config.maks_sentence_length:
+                return previous_match
         original_sentences = tuple(masked_sentences)
         token_probabilities = []
         for sentence_index in range(len(masked_sentences)):
