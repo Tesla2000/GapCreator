@@ -1,4 +1,4 @@
-from itertools import count
+from typing import Optional
 
 import torch
 import torch.nn.functional as F
@@ -25,7 +25,7 @@ stripped_signs = '.?!,'
 
 
 @torch.no_grad
-def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
+def get_longest_masks(base_sentence: str) -> Optional[tuple[str, ...]]:
     previous_match = None
     while True:
         base_sentence = base_sentence.strip(stripped_signs).lower()
@@ -35,19 +35,29 @@ def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
         if pos_masks:
             if len(pos_masks[0]) > Config.max_gap_length:
                 return previous_match
-        original_sentences = tuple(masked_sentences)
-        token_probabilities = []
+        # original_sentences = tuple(masked_sentences)
+        # token_probabilities = []
+        matching_sentences = []
         for sentence_index in range(len(masked_sentences)):
-            position = pos_masks[sentence_index][-1]
-            sentence = masked_sentences[sentence_index]
-            encoded_inputs = enc(
-                sentence,
-                return_tensors='pt', padding='max_length', max_length=Config.max_sentence_length + 1)
-            output = mlm_model_ts(**encoded_inputs)[0][0][position]
-            next_token_probability = torch.sum(torch.sort(F.softmax(output, dim=0))[0][-Config.possible_options:])
-            token_probabilities.append(next_token_probability)
-        matching_sentences = tuple(sentence for sentence, probability in zip(original_sentences, token_probabilities) if
-                                   probability > Config.confidence_threshold)
+            for position in pos_masks[sentence_index]:
+                sentence = masked_sentences[sentence_index]
+                encoded_inputs = enc(
+                    sentence,
+                    return_tensors='pt', padding='max_length', max_length=Config.max_sentence_length + 1)
+                output = mlm_model_ts(**encoded_inputs)[0][0][position]
+                # next_token_probability = torch.sum(torch.sort(F.softmax(output, dim=0))[0][-Config.possible_options:])
+                predicted_indexes = reversed(torch.argsort(output, dim=-1))[:Config.possible_options]
+                predicted_tokens = [enc.convert_ids_to_tokens([predicted_index])[0] for predicted_index in predicted_indexes]
+                real_token = base_sentence.split()[position - 1]
+                if real_token in predicted_tokens:
+                    matching_sentences.append(sentence)
+            #     if next_token_probability < Config.confidence_threshold:
+            #         token_probabilities.append(next_token_probability)
+            #         break
+            # else:
+            #     token_probabilities.append(next_token_probability)
+        # matching_sentences = tuple(sentence for sentence, probability in zip(original_sentences, token_probabilities) if
+        #                            probability > Config.confidence_threshold)
         if not matching_sentences:
             return previous_match
         previous_match = matching_sentences

@@ -19,7 +19,7 @@ def main():
         sentences = div_to_sentences(paragraph.string[paragraph.regs[1][0]:start_index])
         for raw_sentence in sentences:
             raw_sentence = re.sub(r'\s+', ' ', raw_sentence)
-            write_with_last_sign = lambda sentence: output_file.write(sentence + (raw_sentence[-1] if not sentence.endswith(raw_sentence[-1]) else '') + ' ')
+            write_with_last_sign = lambda sentence: (output_file.write(sentence + (raw_sentence[-1] if not sentence.endswith(raw_sentence[-1]) else '') + ' '), output_file.flush())
             sentence = raw_sentence.lower().replace(',', ' ').strip('.?!')
             if len(sentence.split()) > Config.max_sentence_length:
                 write_with_last_sign(sentence)
