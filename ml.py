@@ -25,7 +25,7 @@ stripped_signs = '.?!,'
 
 
 @torch.no_grad
-def get_longest_masks(base_sentence: str) -> tuple[str, ...]:
+def get_longest_masks(base_sentence: str) -> tuple[list[str], ...]:
     previous_match = None
     while True:
         base_sentence = base_sentence.strip(stripped_signs).lower()
